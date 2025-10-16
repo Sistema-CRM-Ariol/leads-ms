@@ -1,0 +1,93 @@
+// This is your Prisma schema file for the Leads microservice
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Leads {
+    id       String  @id @default(uuid())
+    name     String
+    position String?
+    city     String
+    address  String?
+    invoice  String?
+    nit      String?
+    
+    email1   String
+    email2   String?
+
+    phone1   String
+    phone2   String?
+
+    source   LeadSource   @default(WEB)
+    status   LeadStatus   @default(NEW)
+    priority LeadPriority @default(MEDIUM)
+
+    description String?
+    notes       String?
+
+    assignedToId String?
+
+    clientId String? // Referencia al cliente cuando se convierte
+
+    isActive Boolean @default(true)
+
+    activities LeadActivity[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("leads")
+}
+
+model LeadActivity {
+    id     String @id @default(uuid())
+    leadId String
+    lead   Leads  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+    type        ActivityType
+    description String
+
+    userId String? // Referencia al usuario que realizó la actividad
+
+    createdAt DateTime @default(now())
+
+    @@map("lead_activities")
+}
+
+enum LeadSource {
+    WEB
+    WHATSAPP
+    PHONE
+    EMAIL
+    REFERRAL // Referido por otro cliente
+    SOCIAL_MEDIA
+    OTHER
+}
+
+enum LeadStatus {
+    NEW
+    CONTACTED
+    NEGOTIATION
+    WON
+    LOST
+}
+
+enum LeadPriority {
+    LOW
+    MEDIUM
+    HIGH
+    URGENT
+}
+
+enum ActivityType {
+    CALL
+    EMAIL
+    MEETING
+    MESSAGE
+}
