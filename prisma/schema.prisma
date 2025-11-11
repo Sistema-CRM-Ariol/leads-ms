@@ -11,18 +11,23 @@ datasource db {
 
 model Leads {
     id       String  @id @default(uuid())
-    name     String
-    position String?
+    name     String // Nombre completo del lead
+    lastname String?
+
+    company  String?
+    position String? // Cargo o puesto (opcional)
+    
     city     String
     address  String?
-    invoice  String?
-    nit      String?
-    
-    email1   String
-    email2   String?
 
-    phone1   String
-    phone2   String?
+    razonSocial String? // Nombre legal o comercial para facturación
+    nit         String? // NIT del cliente o empresa
+
+    email1 String
+    email2 String?
+
+    phone1 String
+    phone2 String?
 
     source   LeadSource   @default(WEB)
     status   LeadStatus   @default(NEW)
@@ -31,9 +36,8 @@ model Leads {
     description String?
     notes       String?
 
-    assignedToId String?
-
-    clientId String? // Referencia al cliente cuando se convierte
+    assignedToId String? // Usuario asignado
+    clientId     String? // Cliente convertido
 
     isActive Boolean @default(true)
 
