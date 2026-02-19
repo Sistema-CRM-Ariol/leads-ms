@@ -1,13 +1,11 @@
-# Dependencias
+# ===== Dependencias =====
 FROM node:21-alpine3.19 as deps
 WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
 
-
-
-# Builder - Construye la aplicación
+# ===== Builder - Construye la aplicación =====
 FROM node:21-alpine3.19 as build
 WORKDIR /usr/src/app
 
@@ -26,9 +24,7 @@ RUN npm run build
 RUN npm ci -f --only=production && npm cache clean --force
 
 
-
-
-# Crear la imagen final de Docker
+# ===== Crear la imagen final de Docker =====
 FROM node:21-alpine3.19 as prod
 WORKDIR /usr/src/app
 
