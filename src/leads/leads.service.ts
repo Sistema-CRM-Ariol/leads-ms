@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { FilterLeadsDto } from './dto/filter-leads.dto';
@@ -13,10 +13,68 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class LeadsService {
 
+    private readonly logger = new Logger('LeadsService');
+
     constructor(
         private readonly prisma: PrismaService,
         @Inject(NATS_SERVICE) private readonly natsClient: ClientProxy,
     ) { }
+
+    // ─── Dashboard Stats ────────────────────────────────────────────
+    async getStats() {
+
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const [
+            totalLeads,
+            newThisWeek,
+            convertedToClient,
+            discarded,
+            wonLeads,
+        ] = await Promise.all([
+            this.prisma.leads.count(),
+            this.prisma.leads.count({
+                where: { createdAt: { gte: startOfWeek } },
+            }),
+            this.prisma.leads.count({
+                where: { status: LeadStatus.WON },
+            }),
+            this.prisma.leads.count({
+                where: { status: LeadStatus.LOST },
+            }),
+            this.prisma.leads.findMany({
+                where: { status: LeadStatus.WON },
+                select: { createdAt: true, updatedAt: true },
+            }),
+        ]);
+
+        // Tasa de conversión
+        const conversionRate = totalLeads > 0
+            ? parseFloat(((convertedToClient / totalLeads) * 100).toFixed(2))
+            : 0;
+
+        // Tiempo promedio de cierre en días (diferencia entre createdAt y updatedAt de leads WON)
+        let avgClosingTimeDays = 0;
+        if (wonLeads.length > 0) {
+            const totalDays = wonLeads.reduce((sum, lead) => {
+                const diffMs = lead.updatedAt.getTime() - lead.createdAt.getTime();
+                return sum + diffMs / (1000 * 60 * 60 * 24);
+            }, 0);
+            avgClosingTimeDays = parseFloat((totalDays / wonLeads.length).toFixed(1));
+        }
+
+        return {
+            totalLeads,
+            newThisWeek,
+            convertedToClient,
+            discarded,
+            conversionRate,
+            avgClosingTimeDays,
+        };
+    }
 
     async create(createLeadDto: CreateLeadDto) {
 

@@ -9,6 +9,11 @@ import { ChangeLeadStatusDto } from './dto/change-lead-status.dto';
 export class LeadsController {
     constructor(private readonly leadsService: LeadsService) { }
 
+    @MessagePattern('leads.stats')
+    getStats() {
+        return this.leadsService.getStats();
+    }
+
     @MessagePattern('leads.create')
     create(@Payload() createLeadDto: CreateLeadDto) {
         return this.leadsService.create(createLeadDto);
