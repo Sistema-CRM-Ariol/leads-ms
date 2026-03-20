@@ -14,6 +14,11 @@ export class LeadsController {
         return this.leadsService.getStats();
     }
 
+    @MessagePattern('leads.dashboard')
+    getDashboardData() {
+        return this.leadsService.getDashboardData();
+    }
+
     @MessagePattern('leads.create')
     create(@Payload() createLeadDto: CreateLeadDto) {
         return this.leadsService.create(createLeadDto);

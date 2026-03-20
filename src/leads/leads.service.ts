@@ -255,4 +255,41 @@ export class LeadsService {
             throw new RpcException(error);
         }
     }
+
+    async getDashboardData() {
+        try {
+            const now = new Date();
+            const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+            const [totalLeads, recentLeads, byStatusRaw, bySourceRaw] = await Promise.all([
+                this.prisma.leads.count(),
+                this.prisma.leads.findMany({
+                    where: { createdAt: { gte: sixMonthsAgo } },
+                    select: { createdAt: true },
+                }),
+                this.prisma.leads.groupBy({ by: ['status'], _count: { _all: true } }),
+                this.prisma.leads.groupBy({ by: ['source'], _count: { _all: true } }),
+            ]);
+
+            // Chart mensual de últimos 6 meses
+            const monthlyMap: Record<string, number> = {};
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                monthlyMap[key] = 0;
+            }
+            for (const lead of recentLeads) {
+                const key = `${lead.createdAt.getFullYear()}-${String(lead.createdAt.getMonth() + 1).padStart(2, '0')}`;
+                if (monthlyMap[key] !== undefined) monthlyMap[key]++;
+            }
+            const sixMonthChart = Object.entries(monthlyMap).map(([month, count]) => ({ month, count }));
+
+            const byStatus = byStatusRaw.map(r => ({ status: r.status, count: r._count._all }));
+            const bySource = bySourceRaw.map(r => ({ source: r.source, count: r._count._all }));
+
+            return { totalLeads, sixMonthChart, byStatus, bySource };
+        } catch (error) {
+            throw new RpcException(error);
+        }
+    }
 }
