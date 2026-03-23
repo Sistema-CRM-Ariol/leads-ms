@@ -216,20 +216,40 @@ export class LeadsService {
             });
         }
 
-        const updatedLead = await this.prisma.leads.update({
-            where: { id },
-            data: { status },
-        });
-
-        if (status === LeadStatus.WON) {
-            return this.convertToClient(updatedLead);
+        if( lead.status === 'WON' ){
+            throw new RpcException({
+                status: 400,
+                message: 'No se puede cambiar el estado de un lead que ya fue convertido a cliente',
+            });
         }
 
-        return {
-            message: 'Estado del lead actualizado con éxito',
-            lead: updatedLead,
-        };
+        const updatedLead = await this.prisma.leads.update({
+            where: { id },
+            data: { status: 'WON' },
+        });
 
+        try {
+            const client = await this.convertToClient(updatedLead);
+            
+            await this.prisma.leads.update({
+                where: { id },
+                data: { clientId: client.client.id },
+            });
+
+            return {
+                message: 'Estado del lead actualizado con éxito',
+                lead: updatedLead,
+            };
+
+        } catch (error) {
+            
+            this.logger.error(`Error al convertir lead a cliente: ${error.message}`, error.stack);
+
+            throw new RpcException({
+                status: 500,
+                message: 'Error al convertir lead a cliente',
+            });
+        }
     }
 
     async convertToClient(lead: Leads) {
